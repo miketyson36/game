@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>記憶翻牌配對遊戲 · 雙人對戰</title>
+    <style>
+        /* ===== 全域重置與基礎設定 ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Quicksand', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(145deg, #fdf6f0 0%, #f0e9ff 50%, #e8f4fd 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+            color: #3a3a4a;
+            user-select: none;
+        }
+
+        /* ===== 遊戲主容器 ===== */
+        .game-container {
+            width: 100%;
+            max-width: 820px;
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 36px;
+            padding: 24px 20px 28px;
+            box-shadow: 0 20px 50px rgba(140, 120, 180, 0.18), 0 6px 20px rgba(0, 0, 0, 0.04);
+            border: 2px solid rgba(255, 255, 255, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 18px;
+            transition: all 0.3s ease;
+        }
+
+        /* ===== 標題 ===== */
+        h1 {
+            font-size: 1.7rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            background: linear-gradient(135deg, #7c6ee0, #e07ca0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-align: center;
+            line-height: 1.3;
+            filter: drop-shadow(0 2px 6px rgba(124, 110, 224, 0.12));
+        }
+
+        .subtitle {
+            font-size: 0.85rem;
+            color: #9a8fb8;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            margin-top: -10px;
+        }
+
+        /* ===== 回合提示 ===== */
+        .turn-banner {
+            width: 100%;
+            max-width: 420px;
+            padding: 12px 24px;
+            border-radius: 60px;
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .turn-banner.player1 {
+            background: linear-gradient(135deg, #ffe0f0, #ffd0e0);
+            color: #b03060;
+            border: 2px solid #ffb8d0;
+        }
+
+        .turn-banner.player2 {
+            background: linear-gradient(135deg, #d8e8ff, #c8dcff);
+            color: #3050a0;
+            border: 2px solid #a8c8ff;
+        }
+
+        .turn-banner.gameover {
+            background: linear-gradient(135deg, #f0e8ff, #e8d8ff);
+            color: #6040a0;
+            border: 2px solid #d0b8ff;
+            font-size: 1.2rem;
+        }
+
+        .turn-banner .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse 1.4s ease-in-out infinite;
+        }
+
+        .turn-banner.player1 .dot { background: #e06090; }
+        .turn-banner.player2 .dot { background: #5080d0; }
+        .turn-banner.gameover .dot { background: #8060c0; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.75); }
+        }
+
+        /* ===== 計分板 ===== */
+        .scoreboard {
+            display: flex;
+            gap: 12px;
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .score-card {
+            flex: 1;
+            padding: 12px 8px;
+            border-radius: 22px;
+            text-align: center;
+            transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border: 2.5px solid transparent;
+            position: relative;
+            background: #ffffffcc;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.04);
+        }
+
+        .score-card .label {
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            opacity: 0.65;
+            margin-bottom: 2px;
+        }
+
+        .score-card .score {
+            font-size: 1.8rem;
+            font-weight: 800;
+            line-height: 1.2;
+        }
+
+        .score-card.p1 {
+            color: #b03060;
+        }
+
+        .score-card.p1 .score { color: #d04070; }
+
+        .score-card.p2 {
+            color: #3050a0;
+        }
+
+        .score-card.p2 .score { color: #4068c0; }
+
+        .score-card.active-p1 {
+            border-color: #ff90b8;
+            background: #fff0f6;
+            box-shadow: 0 6px 20px rgba(255, 144, 184, 0.25);
+            transform: scale(1.04);
+        }
+
+        .score-card.active-p2 {
+            border-color: #90b8ff;
+            background: #f0f6ff;
+            box-shadow: 0 6px 20px rgba(144, 184, 255, 0.25);
+            transform: scale(1.04);
+        }
+
+        /* ===== 卡牌網格 ===== */
+        .board {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            width: 100%;
+            max-width: 560px;
+            perspective: 1200px;
+            padding: 4px;
+        }
+
+        /* ===== 卡牌 ===== */
+        .card {
+            aspect-ratio: 1 / 1;
+            position: relative;
+            cursor: pointer;
+            transform-style: preserve-3d;
+            transition: transform 0.45s cubic-bezier(0.34, 1.3, 0.64, 1);
+            border-radius: 18px;
+            will-change: transform;
+        }
+
+        .card.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card.matched {
+            cursor: default;
+            animation: matchBounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .card.matched .card-front {
+            box-shadow: 0 0 0 3px #7c6ee0, 0 6px 20px rgba(124, 110, 224, 0.3);
+        }
+
+        @keyframes matchBounce {
+            0% { transform: rotateY(180deg) scale(1); }
+            40% { transform: rotateY(180deg) scale(1.1); }
+            70% { transform: rotateY(180deg) scale(0.96); }
+            100% { transform: rotateY(180deg) scale(1); }
+        }
+
+        .card-face {
+            position: absolute;
+            inset: 0;
+            border-radius: 18px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            overflow: hidden;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06);
+        }
+
+        /* 卡牌背面 */
+        .card-back {
+            background: linear-gradient(145deg, #b8a9e8, #9a87d8);
+            border: 2px solid #ffffff66;
+            font-size: 1.5rem;
+            color: #ffffffdd;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+            transition: box-shadow 0.2s ease;
+        }
+
+        .card-back::after {
+            content: '?';
+            font-weight: 800;
+            font-size: 1.6rem;
+            opacity: 0.8;
+        }
+
+        .card:not(.flipped):not(.matched):hover .card-back {
+            box-shadow: 0 6px 20px rgba(124, 110, 224, 0.35);
+        }
+
+        /* 卡牌正面 */
+        .card-front {
+            background: linear-gradient(145deg, #ffffff, #f5f2ff);
+            border: 2px solid #e8e0ff;
+            transform: rotateY(180deg);
+            font-size: 2rem;
+            line-height: 1;
+            transition: box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+
+        .card-front span {
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.08));
+            transition: transform 0.3s ease;
+        }
+
+        .card.matched .card-front span {
+            animation: emojiPop 0.4s ease;
+        }
+
+        @keyframes emojiPop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.25); }
+            100% { transform: scale(1); }
+        }
+
+        /* ===== 重新開始按鈕 ===== */
+        .btn-restart {
+            padding: 13px 42px;
+            border: none;
+            border-radius: 60px;
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            font-family: inherit;
+            cursor: pointer;
+            background: linear-gradient(135deg, #7c6ee0, #a87ce0);
+            color: #ffffff;
+            box-shadow: 0 6px 20px rgba(124, 110, 224, 0.35);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            margin-top: 2px;
+        }
+
+        .btn-restart:hover {
+            transform: translateY(-2px) scale(1.03);
+            box-shadow: 0 10px 28px rgba(124, 110, 224, 0.45);
+        }
+
+        .btn-restart:active {
+            transform: translateY(1px) scale(0.98);
+            box-shadow: 0 4px 12px rgba(124, 110, 224, 0.3);
+        }
+
+        /* ===== 獲勝動畫 ===== */
+        .winner-glow {
+            animation: glowPulse 1.2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glowPulse {
+            from { box-shadow: 0 0 20px rgba(180, 140, 255, 0.3); }
+            to { box-shadow: 0 0 45px rgba(180, 140, 255, 0.7); }
+        }
+
+        /* ===== 響應式設計 ===== */
+        @media (max-width: 600px) {
+            .game-container {
+                padding: 18px 12px 22px;
+                border-radius: 28px;
+                gap: 14px;
+            }
+
+            h1 {
+                font-size: 1.35rem;
+            }
+
+            .subtitle {
+                font-size: 0.75rem;
+            }
+
+            .board {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 8px;
+                max-width: 420px;
+            }
+
+            .card-front {
+                font-size: 1.5rem;
+            }
+
+            .card-back::after {
+                font-size: 1.2rem;
+            }
+
+            .score-card .score {
+                font-size: 1.4rem;
+            }
+
+            .turn-banner {
+                font-size: 0.95rem;
+                padding: 10px 16px;
+            }
+
+            .btn-restart {
+                padding: 11px 32px;
+                font-size: 0.9rem;
+            }
+        }
+
+        @media (max-width: 380px) {
+            .board {
+                gap: 6px;
+            }
+
+            .card-front {
+                font-size: 1.2rem;
+            }
+
+            .card-back::after {
+                font-size: 1rem;
+            }
+
+            .score-card .score {
+                font-size: 1.2rem;
+            }
+
+            .score-card .label {
+                font-size: 0.65rem;
+            }
+        }
+
+        /* 防止手機長按選取 */
+        .card {
+            -webkit-touch-callout: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-container" id="gameContainer">
+    <h1>🧠 記憶翻牌配對</h1>
+    <div class="subtitle">雙人對戰 · 考驗記憶力</div>
+
+    <!-- 回合提示 -->
+    <div class="turn-banner player1" id="turnBanner">
+        <span class="dot"></span>
+        <span id="turnText">現在是玩家一的回合</span>
+    </div>
+
+    <!-- 計分板 -->
+    <div class="scoreboard">
+        <div class="score-card p1 active-p1" id="scoreCard1">
+            <div class="label">玩家一</div>
+            <div class="score" id="score1">0</div>
+        </div>
+        <div class="score-card p2" id="scoreCard2">
+            <div class="label">玩家二</div>
+            <div class="score" id="score2">0</div>
+        </div>
+    </div>
+
+    <!-- 卡牌網格 -->
+    <div class="board" id="board"></div>
+
+    <!-- 重新開始按鈕 -->
+    <button class="btn-restart" id="restartBtn">🔄 重新開始</button>
+</div>
+
+<script>
+    (function() {
+        'use strict';
+
+        // ===== 遊戲設定 =====
+        const EMOJIS = ['🍎', '🍌', '🍇', '🍓', '🍒', '🥝', '🍍', '🥑', '🍑', '🍋'];
+        const TOTAL_PAIRS = EMOJIS.length;          // 10 對
+        const TOTAL_CARDS = TOTAL_PAIRS * 2;        // 20 張
+        const FLIP_BACK_DELAY = 1000;                // 配對失敗後蓋回延遲 (ms)
+        const MATCH_CHECK_DELAY = 350;               // 翻開第二張後檢查延遲 (ms)
+
+        // ===== 遊戲狀態 =====
+        let cards = [];               // 卡牌資料陣列 { emoji, matched }
+        let flippedIndices = [];      // 當前翻開的卡牌索引 (最多 2 個)
+        let currentPlayer = 1;        // 1 或 2
+        let scores = { 1: 0, 2: 0 };
+        let matchedPairs = 0;         // 已配對的對數
+        let isLocked = false;         // 防止動畫期間連點
+        let gameOver = false;
+
+        // ===== DOM 元素 =====
+        const boardEl = document.getElementById('board');
+        const turnBanner = document.getElementById('turnBanner');
+        const turnText = document.getElementById('turnText');
+        const score1El = document.getElementById('score1');
+        const score2El = document.getElementById('score2');
+        const scoreCard1 = document.getElementById('scoreCard1');
+        const scoreCard2 = document.getElementById('scoreCard2');
+        const restartBtn = document.getElementById('restartBtn');
+        const gameContainer = document.getElementById('gameContainer');
+
+        // ===== 工具函式 =====
+
+        /** Fisher-Yates 洗牌演算法 */
+        function shuffleArray(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        /** 建立卡牌資料（已洗牌） */
+        function createShuffledCards() {
+            const deck = [];
+            for (let i = 0; i < TOTAL_PAIRS; i++) {
+                deck.push({ emoji: EMOJIS[i], matched: false });
+                deck.push({ emoji: EMOJIS[i], matched: false });
+            }
+            return shuffleArray(deck);
+        }
+
+        // ===== 渲染 =====
+
+        /** 建立卡牌 DOM */
+        function renderBoard() {
+            boardEl.innerHTML = '';
+            cards.forEach((card, index) => {
+                const cardEl = document.createElement('div');
+                cardEl.className = 'card';
+                cardEl.dataset.index = index;
+                cardEl.setAttribute('role', 'button');
+                cardEl.setAttribute('aria-label', '卡牌 ' + (index + 1));
+
+                // 背面
+                const backFace = document.createElement('div');
+                backFace.className = 'card-face card-back';
+
+                // 正面
+                const frontFace = document.createElement('div');
+                frontFace.className = 'card-face card-front';
+                const span = document.createElement('span');
+                span.textContent = card.emoji;
+                frontFace.appendChild(span);
+
+                cardEl.appendChild(backFace);
+                cardEl.appendChild(frontFace);
+                boardEl.appendChild(cardEl);
+            });
+        }
+
+        /** 更新計分板與回合提示 */
+        function updateUI() {
+            score1El.textContent = scores[1];
+            score2El.textContent = scores[2];
+
+            // 高亮當前玩家計分卡
+            scoreCard1.classList.toggle('active-p1', currentPlayer === 1 && !gameOver);
+            scoreCard2.classList.toggle('active-p2', currentPlayer === 2 && !gameOver);
+
+            if (gameOver) {
+                turnBanner.className = 'turn-banner gameover winner-glow';
+                turnText.textContent = getGameOverMessage();
+            } else {
+                turnBanner.className = 'turn-banner player' + currentPlayer;
+                turnText.textContent = '現在是玩家' + (currentPlayer === 1 ? '一' : '二') + '的回合';
+            }
+        }
+
+        /** 取得遊戲結束訊息 */
+        function getGameOverMessage() {
+            if (scores[1] > scores[2]) {
+                return '🎉 玩家一獲勝！ 🎉';
+            } else if (scores[2] > scores[1]) {
+                return '🎉 玩家二獲勝！ 🎉';
+            } else {
+                return '🤝 平手！雙方一樣厲害！';
+            }
+        }
+
+        /** 切換玩家 */
+        function switchPlayer() {
+            currentPlayer = currentPlayer === 1 ? 2 : 1;
+        }
+
+        // ===== 遊戲邏輯 =====
+
+        /** 翻開卡牌 */
+        function flipCard(index) {
+            const cardEl = boardEl.children[index];
+            if (!cardEl) return;
+
+            cardEl.classList.add('flipped');
+            flippedIndices.push(index);
+        }
+
+        /** 蓋回卡牌 */
+        function unflipCard(index) {
+            const cardEl = boardEl.children[index];
+            if (!cardEl) return;
+            cardEl.classList.remove('flipped');
+        }
+
+        /** 標記為已配對 */
+        function markMatched(index) {
+            const cardEl = boardEl.children[index];
+            if (!cardEl) return;
+            cardEl.classList.add('matched');
+        }
+
+        /** 檢查兩張牌是否配對 */
+        function checkMatch() {
+            const [i1, i2] = flippedIndices;
+            const card1 = cards[i1];
+            const card2 = cards[i2];
+
+            if (card1.emoji === card2.emoji) {
+                // 配對成功
+                card1.matched = true;
+                card2.matched = true;
+                matchedPairs++;
+                scores[currentPlayer]++;
+
+                markMatched(i1);
+                markMatched(i2);
+
+                flippedIndices = [];
+                isLocked = false;
+                updateUI();
+
+                // 檢查遊戲是否結束
+                if (matchedPairs === TOTAL_PAIRS) {
+                    gameOver = true;
+                    isLocked = true;
+                    updateUI();
+                    gameContainer.classList.add('winner-glow');
+                }
+                // 配對成功，同一位玩家繼續
+            } else {
+                // 配對失敗，延遲後蓋回並換人
+                isLocked = true;
+                setTimeout(() => {
+                    unflipCard(i1);
+                    unflipCard(i2);
+                    flippedIndices = [];
+                    switchPlayer();
+                    isLocked = false;
+                    updateUI();
+                }, FLIP_BACK_DELAY);
+            }
+        }
+
+        /** 處理卡牌點擊 */
+        function handleCardClick(e) {
+            if (isLocked || gameOver) return;
+
+            const cardEl = e.target.closest('.card');
+            if (!cardEl) return;
+
+            const index = parseInt(cardEl.dataset.index, 10);
+            const card = cards[index];
+
+            // 已配對、已翻開、或已在翻牌陣列中則忽略
+            if (card.matched) return;
+            if (flippedIndices.includes(index)) return;
+            if (flippedIndices.length >= 2) return;
+
+            // 翻牌
+            flipCard(index);
+
+            // 翻開第一張，等待第二張
+            if (flippedIndices.length === 1) {
+                isLocked = false;
+                return;
+            }
+
+            // 翻開第二張，鎖定並檢查
+            if (flippedIndices.length === 2) {
+                isLocked = true;
+                setTimeout(() => {
+                    checkMatch();
+                }, MATCH_CHECK_DELAY);
+            }
+        }
+
+        // ===== 初始化 / 重置 =====
+
+        function initGame() {
+            // 重置狀態
+            cards = createShuffledCards();
+            flippedIndices = [];
+            currentPlayer = 1;
+            scores = { 1: 0, 2: 0 };
+            matchedPairs = 0;
+            isLocked = false;
+            gameOver = false;
+
+            // 清除獲勝光暈
+            gameContainer.classList.remove('winner-glow');
+
+            // 渲染與更新
+            renderBoard();
+            updateUI();
+        }
+
+        // ===== 事件綁定 =====
+
+        // 卡牌點擊（事件委派）
+        boardEl.addEventListener('click', handleCardClick);
+
+        // 重新開始
+        restartBtn.addEventListener('click', initGame);
+
+        // 初始化遊戲
+        initGame();
+
+    })();
+</script>
+
+</body>
+</html>
